@@ -1,12 +1,14 @@
+#!/usr/bin/env python
 #Neopixel imports
 import time
-import board
-import neopixel
+#import board
+#import neopixel
 
 #Matrix imports
 import re
 import time
 import argparse
+import luma
 
 from luma.led_matrix.device import max7219
 from luma.core.interface.serial import spi, noop
@@ -47,11 +49,11 @@ GPIO.setup(22, GPIO.OUT) #Driver 3
 
 #Create Neopixel Strip for Head
 # NeoPixels must be connected to D10, D12, D18 or D21 to work.
-pixel_pin = board.D12
-num_pixels = 80
-ORDER = neopixel.GRB
-pixels = neopixel.NeoPixel(pixel_pin, num_pixels, brightness=0.2, auto_write=False,
-                           pixel_order=ORDER)
+#pixel_pin = board.D12
+#num_pixels = 80
+#ORDER = neopixel.GRB
+#pixels = neopixel.NeoPixel(pixel_pin, num_pixels, brightness=0.2, auto_write=False,
+ #                          pixel_order=ORDER)
 
 serial = spi(port=0, device=0, gpio=noop())
 device = max7219(serial, cascaded=n or 1, block_orientation=block_orientation, rotate=rotate or 0)
@@ -101,7 +103,7 @@ def process_event(assistant, led, event):
         #led.state = Led.BEACON_DARK  # Ready.
         printMatrix('Say "OK, Google" then speak, or press Ctrl+C to quit...')
     elif event.type == EventType.ON_CONVERSATION_TURN_STARTED:
-        #led.state = Led.ON  # Listening.
+        led.state = Led.ON  # Listening.
     elif event.type == EventType.ON_RECOGNIZING_SPEECH_FINISHED and event.args:
         print('You said:', event.args['text'])
         text = event.args['text'].lower()
