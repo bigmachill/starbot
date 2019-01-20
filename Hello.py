@@ -5,6 +5,10 @@ import cv2
 
 import picamera
 from time import sleep
+import paho.mqtt.publish as publish
+from motors import send_motor_speed
+MQTT_SERVER = "10.42.0.4"
+MQTT_PATH = "test_channel"
 
 ########## PRESS ESCAPE TO EXIT PROGRAM ############
 
@@ -17,7 +21,6 @@ from time import sleep
 with picamera.PiCamera() as camera:
     stream = io.BytesIO()
     camera.resolution = (320, 240)
-        
 
 
     for foo in camera.capture_continuous(stream, format = 'jpeg'):
@@ -38,6 +41,7 @@ with picamera.PiCamera() as camera:
 
         lorgefaceWidth = 0
         lorgefacePoint = (0,0)
+        lorgefaceCent = (0,0)
         for (x, y, w, h) in faces:
             cv2.rectangle(img, (x, y), (x + w, y + h), (255, 255, 0), 2)
             cx = x+(w/2)
@@ -45,22 +49,22 @@ with picamera.PiCamera() as camera:
             print cx, ', ', cy
             xCent = cx - 160
             yCent = cy - 120
-            
+
             if w > lorgefaceWidth:
                 lorgefaceWidth = w
                 lorgefacePoint = (cx, cy)
                 lorgefaceCent = (xCent, yCent)
-            print 'lorge boi face: ', lorgefacePoint
-                
+                #publish.single(MQTT_PATH, str(lorgefaceCent) , hostname=MQTT_SERVER)
+
+            #print 'lorge boi face: ', lorgefacePoint
+        send_motor_speed(lorgefaceCent[0]*127/160)
             
         if lorgefaceWidth == 0:
             print 'stuff goes here ig'
-        
-        
+            #publish.single(MQTT_PATH, "no face in frame", hostname=MQTT_SERVER)
+
+
         cv2.imshow('img', img)
-        
-        k = cv2.waitKey(1) 
+        k = cv2.waitKey(1)
         if k == 27:
             break
-            
-
