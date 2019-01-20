@@ -8,14 +8,22 @@ from time import sleep
 
 ########## PRESS ESCAPE TO EXIT PROGRAM ############
 
+### Outputs/Info
+#resolution = (320, 240)
+#centered resoltion = (160, 120) -> (0, 0) = resCent
+#normal coordinates of the center of the face detection box = (cx, cy) = lorgefacePoint
+#centered coordinated of the center of the face detection box = (xCent, yCent) = lorgefaceCeent
+
 with picamera.PiCamera() as camera:
     stream = io.BytesIO()
     camera.resolution = (320, 240)
         
+
+
     for foo in camera.capture_continuous(stream, format = 'jpeg'):
         stream.truncate()
         stream.seek(0)
-        
+        resCent = (160, 120)
         buff = np.fromstring(stream.getvalue(), dtype = np.uint8)
 
         img = cv2.imdecode(buff, 1)
@@ -35,11 +43,13 @@ with picamera.PiCamera() as camera:
             cx = x+(w/2)
             cy = y+(h/2)
             print cx, ', ', cy
+            xCent = cx - 160
+            yCent = cy - 120
             
             if w > lorgefaceWidth:
                 lorgefaceWidth = w
                 lorgefacePoint = (cx, cy)
-                
+                lorgefaceCent = (xCent, yCent)
             print 'lorge boi face: ', lorgefacePoint
                 
             
