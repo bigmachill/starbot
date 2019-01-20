@@ -3,55 +3,12 @@
 
 Servo head_rotate_motor;
 Servo head_tilt_motor;
-Servo left_arm_motor;
-Servo right_arm_motor;
 
-//struct {
-//  int8_t head_rotate_speed;   // Positive is right
-//  int8_t head_tilt_speed;     // Positive is up
-//  int8_t arm_left_speed;      // Positive is raising
-//  int8_t arm_right_speed;     // Positive is raising
-//
-//  uint32_t head_color_left;   // RGB strip on left side of head, 0 means off
-//  uint32_t head_color_right;  // RGB strip on right side of head, 0 means off
-//
-//  uint8_t led_eye_left;
-//  uint8_t led_eye_right;
-//  uint8_t led_mouth;
-//  uint8_t reserved;
-//}
-//
-//enum {
-//  CMD_LED               = 0x00
-//  CMD_HEAD_ROTATE       = 0x01,
-//  CMD_HEAD_TILT         = 0x02,
-//  CMD_ARM_LEFT          = 0x03,
-//  CMD_ARM_RIGHT         = 0x04,
-//  CMD_HEAD_COLOR_LEFT   = 0x05,
-//  CMD_HEAD_COLOR_RIGHT  = 0x06,
-//  CMD_LED_EYE_LEFT      = 0x07,
-//  CMD_LED_EYE_RIGHT     = 0x08,
-//  CMD_LED_MOUTH         = 0x09,
-//  MESSAGE_START         = 0xF0000000,
-//  MESSAGE_END           = 0x0F000000
-//}
-//
-//struct message {
-//  uint8_t cmd;
-//  uint32_t data;
-//}
-
-struct color_message {
-  uint8_t reserved;
-  uint8_t red;
-  uint8_t green;
-  uint8_t blue;
-};
-
-char buf[20];
-volatile uint8_t pos;
-volatile boolean new_message;
-volatile uint8_t message_started;
+// SPI message state
+volatile struct spi_data {
+  boolean new_message;
+  uint8_t data;
+} spi_;
 
 // Additional LED for debugging
 #define LED_PIN 2
@@ -68,34 +25,45 @@ void setup (void) {
 
   head_rotate_motor.attach(5);
   head_tilt_motor.attach(6);
-  left_arm_motor.attach(9);
-  right_arm_motor.attach(10);
 
-  pos = 0;
-  new_message = false;
+  spi_ = {false, 0};
 }
 
 // SPI interrupt routine
 ISR(SPI_STC_vect) {
-  byte c = SPDR;
-
-  // add to buffer if room
-  if (pos < sizeof(buf)) {
-    buf[pos++] = c;
-   
-    // example: newline means time to process buffer
-    //if (c == '\n')
-      new_message = true;
+  uint8_t c = SPDR;
+/*
+  if (receiving) {
+    // New byte of message, check for end
+    if (spi_.len) {
+      spi_.len--;
+      spi_.buf[spi_.idx++] = c;
+    }
+  } else {
+    // New message incoming...
+    spi_.len = c - 1; // Length byte counts as one
+    spi_.idx = 0;
+    spi_.receiving = true;
   }
+*/
+  spi_.data = c;
+  spi_.new_message = true;
 }
 
 void loop(void) {
-  if (new_message) {
-    buf[pos] = 0;
-    Serial.println(buf);
-    pos = 0;
-    new_message = false;
-    if (buf[0]) {
+  if (spi_.new_message) {
+    spi_.new_message = false;
+    int16_t rotate = ((int16_t)(spi_.data & 0xF0) << 2) + 1500;
+    int16_t tilt = ((int16_t)((spi_.data << 4) & 0xF0) << 2) + 1500;
+    Serial.print("Rotate: ");
+    Serial.print(rotate);
+    Serial.print(", Tilt: ");
+    Serial.println(tilt);
+
+    head_rotate_motor.writeMicroseconds(rotate);
+    head_tilt_motor.writeMicroseconds(tilt);
+    
+    if (spi_.data = 0xFF) {
       digitalWrite(LED_PIN, HIGH);
     } else {
       digitalWrite(LED_PIN, LOW);
