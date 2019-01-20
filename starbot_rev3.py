@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 
-
-#Assistant imports
 import logging
 import platform
 import subprocess
 import sys
-import os
 
+#Neopixel imports
+import time
+import board
+import neopixel
+
+pixel_pin = board.D12
+num_pixels = 30
+ORDER = neopixel.GRB
+pixels = neopixel.NeoPixel(pixel_pin, num_pixels, brightness=0.2, auto_write=False,
+                           pixel_order=ORDER)
 
 from google.assistant.library.event import EventType
 
@@ -15,11 +22,6 @@ from aiy.assistant import auth_helpers
 from aiy.assistant.library import Assistant
 from aiy.board import Board, Led
 from aiy.voice import tts
-
-#Neopixel imports
-import time
-import board
-import neopixel
 
 #Matrix imports
 import re
@@ -39,24 +41,16 @@ import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-GPIO.setup(26, GPIO.OUT) #Servo 0
-GPIO.setup(6, GPIO.OUT) #Servo 1
-GPIO.setup(13, GPIO.OUT) #Servo 2
-GPIO.setup(5, GPIO.OUT) #Servo 3
-GPIO.setup(12, GPIO.OUT) #Servo 4
-GPIO.setup(24, GPIO.OUT) #Servo 5
-GPIO.setup(4, GPIO.OUT) #Driver 0
-GPIO.setup(17, GPIO.OUT) #Driver 1
-GPIO.setup(27, GPIO.OUT) #Driver 2
-GPIO.setup(22, GPIO.OUT) #Driver 3
-
-#Create Neopixel Strip for Head
-#NeoPixels must be connected to D10, D12, D18 or D21 to work.
-pixel_pin = board.D12
-num_pixels = 10
-ORDER = neopixel.GRB
-pixels = neopixel.NeoPixel(pixel_pin, num_pixels, brightness=0.2, auto_write=False,
-                           pixel_order=ORDER)
+#GPIO.setup(26, GPIO.OUT) #Servo 0
+#GPIO.setup(6, GPIO.OUT) #Servo 1
+#GPIO.setup(13, GPIO.OUT) #Servo 2
+#GPIO.setup(5, GPIO.OUT) #Servo 3
+#GPIO.setup(12, GPIO.OUT) #Servo 4
+#GPIO.setup(24, GPIO.OUT) #Servo 5
+#GPIO.setup(4, GPIO.OUT) #Driver 0
+#GPIO.setup(17, GPIO.OUT) #Driver 1
+#GPIO.setup(27, GPIO.OUT) #Driver 2
+#GPIO.setup(22, GPIO.OUT) #Driver 3
 
 serial = spi(port=0, device=0, gpio=noop())
 device = max7219(serial, cascaded=4, block_orientation=-90)
@@ -65,50 +59,46 @@ print("Created device")
 def printMatrix(msg):
     show_message(device, msg, fill="white", font=proportional(CP437_FONT), scroll_delay=0.017)
     
-def printWTTS(msg, text):
+def printWTTS(msg):
     tts.say(msg)
-    printMatrix(text)
     printMatrix(msg)
 
-
-def power_off_pi(text):
+def power_off_pi():
     msg = 'Good bye!'
-    printWTTS(msg, text)
+    printWTTS(msg)
     subprocess.call('sudo shutdown now', shell=True)
 
 
-def reboot_pi(text):
+def reboot_pi():
     msg = 'See you in a bit'
-    printWTTS(msg, text)
+    printWTTS(msg)
     subprocess.call('sudo reboot', shell=True)
 
 
-def say_ip(text):
+def say_ip():
     ip_address = subprocess.check_output("hostname -I | cut -d' ' -f1", shell=True)
     msg = 'My IP address is %s' % ip_address.decode('utf-8')
-    printWTTS(msg, text)
-    
-    
-def led_on(text):
+    printWTTS(msg)
+
+def led_on():
     msg = 'Turning LED on'
-    printWTTS(msg, text)
+    printWTTS(msg)
     pixels.fill((255, 0, 0))
     pixels.show()
     time.sleep(1)
-    
-    
-def led_off(text):
+
+def led_off():
     msg = 'Turning LED off'
-    printWTTS(msg, text)
+    printWTTS(msg)
     pixels.fill((0, 0, 0))
     pixels.show()
     time.sleep(1)
-    
+
 def process_event(assistant, led, event):
     logging.info(event)
     if event.type == EventType.ON_START_FINISHED:
         led.state = Led.BEACON_DARK  # Ready.
-        #printMatrix('Say "OK, Google" then speak, or press Ctrl+C to quit...')
+        print('Say "OK, Google" then speak, or press Ctrl+C to quit...')
     elif event.type == EventType.ON_CONVERSATION_TURN_STARTED:
         led.state = Led.ON  # Listening.
     elif event.type == EventType.ON_RECOGNIZING_SPEECH_FINISHED and event.args:
@@ -126,19 +116,13 @@ def process_event(assistant, led, event):
         elif text == 'led on':
             assistant.stop_conversation()
             led_on()
-            pixels.show()
         elif text == 'led off':
             assistant.stop_conversation()
             led_off()
-        elif text == 'goodbye':
+        else:
             assistant.stop_conversation()
-            msg = 'See you later allegator!'
-            tts.say(msg)
-            printMatrix(msg)
-        elif text == 'see you later allegator!':
-            assistant.stop_conversation()
-            
-            
+            tts('I do not know this one.  Please try again.')
+            printMatrix(text)
     elif event.type == EventType.ON_END_OF_UTTERANCE:
         led.state = Led.PULSE_QUICK  # Thinking.
     elif (event.type == EventType.ON_CONVERSATION_TURN_FINISHED
@@ -150,9 +134,6 @@ def process_event(assistant, led, event):
 
 
 def main():
-    if not os.path.exists('/run/user/0'):
-        os.makedirs('/run/user/0')
-        
     logging.basicConfig(level=logging.INFO)
 
     credentials = auth_helpers.get_assistant_credentials()
